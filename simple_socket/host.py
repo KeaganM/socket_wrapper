@@ -1,5 +1,6 @@
 import socket
 import select
+import time
 
 from reciever import Receiver
 
@@ -25,7 +26,6 @@ class Server:
             try:
                 read_sockets, _, exception_sockets = select.select(self._socket_list, [], self._socket_list)
                 r = Receiver()
-
                 for notified_socket in read_sockets:
                     if notified_socket == server_socket:
                         client_socket, client_address = server_socket.accept()
@@ -34,12 +34,18 @@ class Server:
                         print(f'connected to client from {client_address[0]}:{client_address[1]}')
                     else:
                         data = notified_socket.recv(1024)
+                        if not data:
+                            self._socket_list.remove(notified_socket)
+                            print(f'closed connection to socket')
+                            continue
+
                         res = r.process(data)
                         while not res:
                             data = notified_socket.recv(1024)
                             res = r.process(data)
                         print(res)
-
+                for notified_socket in exception_sockets:
+                    self._socket_list.remove(notified_socket)
             except ConnectionResetError as e:
                 print(e)
                 continue
